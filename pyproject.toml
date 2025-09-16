@@ -1,0 +1,15 @@
+[project]
+name = "paperskg-mcp"
+version = "0.1.0"
+description = "PapersKG MCP server for academic paper processing and materials science data extraction"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp[cli]",
+    "pydantic",
+    "jsonschema",
+    "PyMuPDF",
+    "pdfminer.six",
+    "requests",
+    "anthropic",
+]

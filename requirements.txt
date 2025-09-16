@@ -1,0 +1,16 @@
+# MCP server + structured I/O
+mcp
+mcp[cli]
+# Data models / validation
+pydantic
+jsonschema
+
+# PDF parsing
+PyMuPDF
+pdfminer.six
+
+# HTTP client
+requests
+
+# Anthropic SDK (optional; safe to leave installed even if you only use Ollama)
+anthropic

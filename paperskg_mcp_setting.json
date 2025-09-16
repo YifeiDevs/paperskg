@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "paperskg": {
+      "timeout": 600,
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "</path/to/project/paperskg>",
+        "run",
+        "main.py"
+      ]
+    }
+  }
+}
