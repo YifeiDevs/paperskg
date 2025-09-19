@@ -1,7 +1,10 @@
 from __future__ import annotations
 from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel, Field, ConfigDict, model_validator
+import logging
 
+# Set up logger for this module
+logger = logging.getLogger(__name__)
 
 # ---- Core sub-objects --------------------------------------------------------
 
@@ -55,14 +58,32 @@ class LPBFProcess(BaseModel):
         Inputs expected in W, mm/s, μm -> conversion handled below.
         """
         if self.energy_density_J_mm3 is None:
+            logger.debug("Energy density not provided, attempting to compute")
+            
             if self.laser_power_W and self.scan_speed_mm_s and self.hatch_spacing_um and self.layer_thickness_um:
                 try:
                     hs_mm = self.hatch_spacing_um / 1000.0
                     lt_mm = self.layer_thickness_um / 1000.0
                     self.energy_density_J_mm3 = self.laser_power_W / (self.scan_speed_mm_s * hs_mm * lt_mm)
-                except Exception:
+                    
+                    logger.info(f"Computed energy density: {self.energy_density_J_mm3:.2f} J/mm³ "
+                               f"(Power: {self.laser_power_W}W, Speed: {self.scan_speed_mm_s}mm/s, "
+                               f"Hatch: {self.hatch_spacing_um}μm, Layer: {self.layer_thickness_um}μm)")
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to compute energy density: {e}")
                     # leave as None if anything odd
                     pass
+            else:
+                missing_params = []
+                if not self.laser_power_W: missing_params.append("laser_power_W")
+                if not self.scan_speed_mm_s: missing_params.append("scan_speed_mm_s")
+                if not self.hatch_spacing_um: missing_params.append("hatch_spacing_um")
+                if not self.layer_thickness_um: missing_params.append("layer_thickness_um")
+                logger.debug(f"Cannot compute energy density, missing parameters: {missing_params}")
+        else:
+            logger.debug(f"Energy density already provided: {self.energy_density_J_mm3} J/mm³")
+            
         return self
 
 
