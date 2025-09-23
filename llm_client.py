@@ -36,7 +36,7 @@ def llm_call(
     json_schema: dict | None = None,
     tool_spec: dict | None = None,
     temperature: float = 0.0,
-    max_tokens: int = 1200,
+    max_tokens: int = 1024*1024,
     provider: str | None = None,
 ) -> T.Union[str, dict]:
     """
@@ -44,9 +44,12 @@ def llm_call(
     - If json_schema is provided: returns a dict (validated if jsonschema is installed).
     - Else: returns plain text string.
     """
+
     prov = (provider or PROVIDER).lower()
     logger.info(f"LLM call initiated - Provider: {prov}, Temperature: {temperature}, Max tokens: {max_tokens}")
-    
+    # logger.info(f"{prompt = }")
+    logger.info(f"{tool_spec = }")
+
     if tool_spec:
         logger.debug(f"Using tool spec: {tool_spec.get('name', 'unknown')}")
     elif json_schema:
@@ -60,7 +63,9 @@ def llm_call(
             logger.debug(f"LLM call attempt {attempt + 1}/{MAX_RETRIES + 1}")
             
             if prov == "anthropic":
+                logger.info("Anthropic Call Start")
                 result = _anthropic_call(prompt, tool_spec, temperature, max_tokens)
+                logger.info(f"{result = }")
                 logger.info(f"LLM call successful on attempt {attempt + 1}")
                 return result
             elif prov == "ollama":
@@ -143,15 +148,29 @@ def _anthropic_call(prompt: str, tool_spec: dict | None,
     logger.debug("Processing tool response")
     for block in resp.content:
         if getattr(block, "type", "") == "tool_use" and block.name == tool_spec["name"]:
-            data = block.input  # <-- already a dict per input_schema
-            logger.debug(f"Found tool_use block for {tool_spec['name']}")
+            # 调试：打印原始输入
+            logger.debug(f"Raw block.input type = {type(block.input)}")
+            logger.debug(f"Raw block.input = {str(block.input)[:500]}...")
             
-            # Validate against the *input_schema* (not the whole tool spec)
+            # 处理字符串情况
+            if isinstance(block.input, str):
+                logger.debug(f"Parsing JSON string...")
+                cleaned = block.input.strip().rstrip(',')
+                logger.debug(f"Cleaned input = {cleaned[:200]}...{cleaned[-50:]}")
+                data = json.loads(cleaned)
+                logger.debug(f"Parsed data type = {type(data)}")
+            else:
+                data = block.input
+                logger.debug(f"Input already parsed")
+            
+            # 断言：确保是字典
+            assert isinstance(data, dict), f"Expected dict, got {type(data)}"
+            logger.debug(f"Final data keys = {list(data.keys())}")
+            
+            # Schema 验证
             if _HAS_JSONSCHEMA:
                 jsonschema.validate(data, tool_spec["input_schema"])
-                logger.debug("Tool response validated against schema")
-            else:
-                logger.debug("Schema validation skipped (jsonschema not available)")
+                logger.debug("Schema validation passed")
             
             return data
 
